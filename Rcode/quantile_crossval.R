@@ -1,23 +1,24 @@
 graphics.off()
 rm(list=ls())
-load("../data.downscaledERA40.norway.sav")
-load("../data/index.norway.1x1kmAggregert.sav")
+
+require(excursions)
+library(Matrix)
+library(fields)
+library(INLA)
 
 #############################
 ## OPTIONS FOR ESTIMATION
 #############################
 
 do.plot = TRUE            #Visualise results?
-save.plot = FALSE         #Save figure as pdf?
-use_log = TRUE           #Use model in log scale?
+use_log = TRUE            #Use model in log scale?
 use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
-use_BCM_eval   = TRUE    #Evaluate results on BCM? If false, use ERA40
+use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
-q = 0.95                   #The quantile to do prediction for
-smooth.X = FALSE
-alpha = 1
-season = 4
+q = 0.95                  #The quantile to do prediction for
+smooth.X = FALSE          #Smooth the covariate?
+season = 4                #Season to work with (1=winter, 2=spring,...)
 
 cat("-- Model details --\n")
 cat("Model : ")
@@ -33,23 +34,55 @@ cat("\n")
 #############################
 ## LOAD DATA
 #############################
-X = data.downscaledERA40.norway
-m = dim(X)[1]
-n = dim(X)[2]
-rm(X)
+
+data.url <- "http://www.math.chalmers.se/~bodavid/data/downscaling/"
+files <- c("index.norway.1x1kmAggregert.sav",
+           "lat.norway.sav",
+           "lon.norway.sav",
+           "dataTrainingNotRandom.obs.sav",
+           "dataTrainingNotRandom.bcm.sav",
+           "dataTrainingNotRandom.era.sav",
+           "dataTestNotRandom.bcm.sav",
+           "dataTestNotRandom.obs.sav",
+           "dataTestNotRandom.era.sav")
+
+for(i in 1:length(files))
+{
+  con <- url(paste(data.url,files[i],sep=""))
+  load(con); close(con)
+}
+m = 58
+n = 63
 obs.ind = (index.norway.1x1kmAggregert[,2]-1)*m+index.norway.1x1kmAggregert[,1]
 
-source("climate.utils.R")
 
-source("load.BCM.data_TheNorwayWay.R")
+n.grid <- length(dataTraining.bcm[[season]])
+n.obs.train <- length(dataTraining.bcm[[season]][[1]])
+n.obs.eval <- length(dataTest.bcm[[season]][[1]])
 
-BCM <- cBind(X_train,X_eval)
+Y_train <- ERA_train <- BCM_train <- matrix(0,n.grid,n.obs.train)
+Y_eval <- ERA_eval <- BCM_eval <- matrix(0,n.grid,n.obs.eval)
+
+
+for(t in 1:n.grid)
+{
+  Y_train[t,] = dataTraining.obs[[season]][[t]]
+  Y_eval[t,]  =dataTest.obs[[season]][[t]]
+
+  BCM_train[t,] = dataTraining.bcm[[season]][[t]]
+  BCM_eval[t,]  =dataTest.bcm[[season]][[t]]
+
+  ERA_train[t,] = dataTraining.era[[season]][[t]]
+  ERA_eval[t,]  =dataTest.era[[season]][[t]]
+}
+
+BCM <- cBind(BCM_train,BCM_eval)
 Y   <- cBind(Y_train, Y_eval)
+ERA <- cBind(ERA_train,ERA_eval)
 
-source("load.climate.data_TheNorwayWay.R")
-ERA <- cBind(X_train,X_eval)
-
-ind = 1:2688
+#############################
+## transform data if selected
+#############################
 if(use_log)
 {
   BCM  = log(BCM)
@@ -57,9 +90,12 @@ if(use_log)
   ERA = log(ERA)
 }
 
+###################################
+## Extract quantiles for each fold
+###################################
+
 n <- dim(Y)[2]
 ind <- 1:n
-
 n.sub = ceiling(n/n.cv)
 ind.sub <- list()
 
@@ -75,6 +111,11 @@ for(i in 1:n.cv){
   quant.ERA[[i]] <- apply(ERA[,ind.sub[[i]]],1,quantile,probs=c(q))
   quant.Y[[i]]   <- apply(Y[,ind.sub[[i]]],1,quantile,probs=c(q))
 }
+
+
+#########################################
+## Construct matrices for spatial models
+#########################################
 
 loc = cBind(as.vector(lon.norway),as.vector(lat.norway))[obs.ind,]
 
@@ -96,11 +137,10 @@ ridx <- integer(mesh$n)
 ridx[idx[!is.na(idx)]] = which(!is.na(idx))
 reo <- match(obs.ind,ridx)
 ireo = 1:777; ireo[reo] = 1:777
-#tmp <- ireo
-#ireo <- reo
-#reo <- tmp
+
 
 if(smooth.X){
+alpha = 1
 if(use_log == T){
   load(paste("temp_data/Xsmooth_BCM_log_alpha",alpha,".RData",sep=""))
   quant.BCM <- X_smoothed
@@ -120,95 +160,37 @@ for(i in 1:n.cv){
   quant.Y[[i]]   <- quant.Y[[i]][reo]
 }
 
-if(0){
-
-  llike.mat <- function(p,obj)
-  {
-    tau = exp(p[1])
-    kappa = exp(p[2])
-    sigma2 = exp(p[3])
-    if(tau>1e-16 && kappa>1e-16 && sigma2>1e-16)
-    {
-      Q = tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)
-      Rp = chol(Q + obj$AtA/sigma2)
-      v = solve(Rp,obj$AtY/sigma2)
-      R = chol(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)
-      l = log(tau)*obj$n + 2*sum(log(diag(R))) -2*sum(log(diag(Rp))) -obj$N*log(sigma2) + t(v)%*%v -obj$yty/sigma2
-      l = as.vector(l)
-      return(-l/2)
-    } else {
-      return(-Inf)
-    }
-  }
-
-  A = Diagonal(777,1)[reo,]
-  A = A[reo,]
-  X  = quant.BCM[[i]]
-  obj = list(AtA = t(A)%*%A, AtY = as.vector(t(A)%*%X), yty = as.vector(t(X)%*%X),
-             M0 = M0, M1 = M1,M2 = M2, n = 777, N = 777)
-  cat("smoothing X")
-  res <- optim(c(0,0,0), llike.mat,control = list(REPORT = 1), obj=obj)
-  tau = exp(res$par[1])
-  kappa = exp(res$par[2])
-  s2 = exp(res$par[3])
-
-  #kappa = 1
-  #s2 = 0.1
-  cat(", done \n")
-  Q.smoother <- tau*(M0 + kappa*M1 + kappa^2*M2 + t(A)%*%A/s2)
-  for(i in 1:n.cv){
-    quant.BCM[[i]] <- as.vector(A%*%solve(Q.smoother,t(A)%*%quant.BCM[[i]]/s2))
-    quant.ERA[[i]] <- as.vector(A%*%solve(Q.smoother,t(A)%*%quant.ERA[[i]]/s2))
-  }
-}
-
+###########################
+## Plot data
+###########################
 qplot = rep(NA,m*n)
-
-if(save.plot){
-} else { dev.new() }
+dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  if(save.plot){
-    fig_name = paste("../letter/Y",i,".pdf",sep="")
-    pdf(fig_name)
-  }
   qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
-  if(save.plot){dev.off()}
 }
 
-if(save.plot){
-} else { dev.new() }
-
+dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  if(save.plot){
-    fig_name = paste("../letter/ERA",i,".pdf",sep="")
-    pdf(fig_name)
-  }
   qplot[obs.ind] = quant.ERA[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
-  if(save.plot){dev.off()}
 }
 
-if(save.plot){
-} else { dev.new() }
-
+dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  if(save.plot){
-    fig_name = paste("../letter/BCM",i,".pdf",sep="")
-    pdf(fig_name)
-  }
   qplot[obs.ind] = quant.BCM[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
-  if(save.plot){dev.off()}
 }
 
-
+##########################
+## Run cross validation
+##########################
 vars <- means <- mse <- matrix(0,n.cv,3)
 spatial.coverage <- rep(0,n.cv)
-#Run cross validation
+
 for(i in 1:n.cv){
   ind.test <- ind.sub[[i]]
   ind.train <- setdiff(ind,ind.sub[[i]])
@@ -232,11 +214,6 @@ for(i in 1:n.cv){
   quant.y <- quant.y[reo]
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
   quant.Ye <- quant.Y[[i]]
-  #quant.p <- matrix(0,777,n.cv-1)
-  #for(j in 1:(n.cv-1)){
-  #  quant.p[,j] <- quant.Yt[[j]]/quant.Xt[[j]]
-  #}
-  #quant.Yp = quant.Xe*rowMeans(quant.p)
   yv <- quant.Yt[[1]]
   xv <- quant.Xt[[1]]
   xx = cBind(Diagonal(777,1), Diagonal(777,1)*quant.Xt[[1]])
@@ -265,16 +242,14 @@ for(i in 1:n.cv){
 
   quant.Yp = alpha_est + beta_est*quant.Xe
 
-  mu_b_ = 0
   llike.mat2 <- function(p,obj)
   {
     tau = exp(p[1])
     kappa = exp(p[2])
     mu = p[3]
     sigma2 = exp(p[4])
-    mu_b = mu_b_#p[4]
-    #cat(p,"\n")
-    if(tau>1e-16 && kappa>1e-16 && sigma2>1e-16)
+    mu_b = 0
+      if(tau>1e-16 && kappa>1e-16 && sigma2>1e-16)
     {
       Y_mu = obj$Y - mu
       Q0 = tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)
@@ -293,11 +268,10 @@ for(i in 1:n.cv){
     }
   }
 
-    A = Diagonal(777,1)*quant.Xt[[1]]
+  A = Diagonal(777,1)*quant.Xt[[1]]
   for(j in 2:(n.cv-1)){
     A = rBind(A,Diagonal(777,1)*quant.Xt[[j]])
   }
-
 
   obj = list(X=A, A = Diagonal(777*(n.cv-1),1),
              Y = yv, I = Diagonal(777,1), M0 = M0, M1 = M1,M2 = M2,
@@ -312,7 +286,7 @@ for(i in 1:n.cv){
   kappa = exp(res$par[2])
   mu = res$par[3]
   sigma2 = exp(res$par[4])
-  mu_b = mu_b_#res$par[4]
+  mu_b = 0
   Q = tau*kronecker(Diagonal(obj$n.cv-1,1),
                           obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)
   Q = obj$A%*%Q%*%obj$A
@@ -384,10 +358,7 @@ for(i in 1:n.cv){
     image.plot(lon.norway,lat.norway,qplot.X, main = "X")
 
 
-    if(save.plot){
-      fig_name = paste("../figs/regulaized_prediction_",name,".pdf",sep="")
-      pdf(fig_name)
-    }else{dev.new()}
+    dev.new()
     par(mfrow=c(3,3))
     if(use_log == FALSE){
       image.plot(lon.norway,lat.norway,qplot.ye, main = "Observation")
@@ -426,7 +397,6 @@ for(i in 1:n.cv){
       hist(exp(quant.Ye) - exp(quant.Yspatial),100,main= paste("Var = ",
           formatC(var(exp(quant.Ye) - exp(quant.Yspatial)),digits=2)))
     }
-    if(save.plot){dev.off()}
   }
 }
 
