@@ -1,5 +1,11 @@
 graphics.off()
 rm(list=ls())
+###
+# Data location, if one has downloaded data the files needed
+# spesifiy data location below (if NULL will download the files)
+###
+data_location = NULL
+
 
 require(excursions)
 library(Matrix)
@@ -34,8 +40,6 @@ cat("\n")
 #############################
 ## LOAD DATA
 #############################
-
-data.url <- "http://www.math.chalmers.se/~bodavid/data/downscaling/"
 files <- c("index.norway.1x1kmAggregert.sav",
            "lat.norway.sav",
            "lon.norway.sav",
@@ -45,11 +49,24 @@ files <- c("index.norway.1x1kmAggregert.sav",
            "dataTestNotRandom.bcm.sav",
            "dataTestNotRandom.obs.sav",
            "dataTestNotRandom.era.sav")
-
-for(i in 1:length(files))
-{
-  con <- url(paste(data.url,files[i],sep=""))
-  load(con); close(con)
+if(is.null(data_location)){
+  data.url <- "http://www.math.chalmers.se/~bodavid/data/downscaling/"
+  cat('Downloading files may take sometime\n')
+  for(i in 1:length(files))
+  {
+    cat('*')
+    con <- url(paste(data.url,files[i],sep=""))
+    load(con); close(con)
+  }
+  cat('Donwloading files done\n')
+}else{
+  for(i in 1:length(files))
+  {
+    con <- file(paste(data_location,files[i],sep=""))
+    load(con); close(con)
+  }
+  
+  
 }
 m = 58
 n = 63
