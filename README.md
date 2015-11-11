@@ -13,5 +13,5 @@ Data and code from article by
 
 ### Code
 
-The R-code requires the file __data.downscaledERA40.norway.sav__, which unfortunatly is quite large so it can not be stored on Github.
+
 
