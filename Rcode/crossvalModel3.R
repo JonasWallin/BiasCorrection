@@ -23,7 +23,7 @@ use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = TRUE           #Smooth the covariate?
+smooth.X = FALSE           #Smooth the covariate?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 
 cat("-- Model details --\n")
@@ -80,10 +80,10 @@ for(t in 1:n.grid)
 {
   Y_train[t,] = dataTraining.obs[[season]][[t]]
   Y_eval[t,]  =dataTest.obs[[season]][[t]]
-
+  
   BCM_train[t,] = dataTraining.bcm[[season]][[t]]
   BCM_eval[t,]  =dataTest.bcm[[season]][[t]]
-
+  
   ERA_train[t,] = dataTraining.era[[season]][[t]]
   ERA_eval[t,]  =dataTest.era[[season]][[t]]
 }
@@ -134,8 +134,8 @@ loc = cBind(as.vector(lon.norway),as.vector(lat.norway))[obs.ind,]
 oi = rep(FALSE,m*n)
 oi[obs.ind] = TRUE
 mesh = excursions:::submesh.grid(matrix(oi,m,n),
-              list(loc=cBind(as.vector(lon.norway),as.vector(lat.norway))
-                          ,dims=c(m,n)))
+                                 list(loc=cBind(as.vector(lon.norway),as.vector(lat.norway))
+                                      ,dims=c(m,n)))
 
 fem = inla.fmesher.smorg(mesh$loc, mesh$graph$tv, fem = 2,
                          output = list("c0", "c1", "g1", "g2"))
@@ -152,25 +152,20 @@ ireo = 1:777; ireo[reo] = 1:777
 
 
 if(smooth.X){
-alpha = 1
-if(use_log == T){
-  load(paste("temp_data/Xsmooth_BCM_log_alpha",alpha,".RData",sep=""))
-  quant.BCM <- X_smoothed
-  load(paste("temp_data/Xsmooth_ERA_log_alpha",alpha,".RData",sep=""))
-  quant.ERA <- X_smoothed
-}else{
-  load("temp_data/Xsmooth_BCM.RData")
-  quant.BCM <- X_smoothed
-  load("temp_data/Xsmooth_ERA.RData")
-  quant.ERA <- X_smoothed
-}
+  alpha = 1
+  if(use_log == T){
+    load(paste("temp_data/Xsmooth_BCM_log_alpha",alpha,".RData",sep=""))
+    quant.BCM <- X_smoothed
+    load(paste("temp_data/Xsmooth_ERA_log_alpha",alpha,".RData",sep=""))
+    quant.ERA <- X_smoothed
+  }else{
+    load("temp_data/Xsmooth_BCM.RData")
+    quant.BCM <- X_smoothed
+    load("temp_data/Xsmooth_ERA.RData")
+    quant.ERA <- X_smoothed
+  }
 }
 
-for(i in 1:n.cv){
-  quant.BCM[[i]] <- quant.BCM[[i]][reo]
-  quant.ERA[[i]] <-   quant.ERA[[i]][reo]
-  quant.Y[[i]]   <- quant.Y[[i]][reo]
-}
 
 ###########################
 ## Plot data
@@ -206,14 +201,17 @@ spatial.coverage <- rep(0,n.cv)
 for(i in 1:n.cv){
   ind.test <- ind.sub[[i]]
   ind.train <- setdiff(ind,ind.sub[[i]])
-
+  
   if(use_BCM_train)
   {
     quant.Xt <- quant.BCM[setdiff(1:n.cv,i)]
   }else{
     quant.Xt <- quant.ERA[setdiff(1:n.cv,i)]
   }
-
+  
+  
+  
+  
   if(use_BCM_eval) {
     quant.Xe <- quant.BCM[[i]]
     name = "BCM"
@@ -221,7 +219,6 @@ for(i in 1:n.cv){
     quant.Xe <- quant.ERA[[i]]
     name = "ERA"
   }
-  #Quantiles based on all test data
   quant.y   <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
   quant.y <- quant.y[reo]
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
@@ -234,22 +231,40 @@ for(i in 1:n.cv){
     xv <- c(xv,quant.Xt[[j]])
     xx = rBind(xx,cBind(Diagonal(777,1),Diagonal(777,1)*quant.Xt[[j]]))
   }
-
-  source('_crossvalModel12.R')
-  quant.Yspatial = mu + quant.Xe*quant.est
-
+  par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+  dim(par_est) <- c(777,2)
+  alpha_est = par_est[,1]
+  beta_est = par_est[,2]
+  
+  quant.Yp0 = alpha_est + beta_est*quant.Xe
+  
+  xx = Diagonal(777,1)*quant.Xt[[1]]
+  for(j in 2:(n.cv-1)){
+    xx = rBind(xx,Diagonal(777,1)*quant.Xt[[j]])
+  }
+  xx = cBind(rep(1,dim(xx)[1]),xx)
+  
+  par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+  alpha_est = par_est[1]
+  beta_est = par_est[2:778]
+  
+  quant.Yp = alpha_est + beta_est*quant.Xe
+  source('_crossvalModel3.R')
+  quant.est <- as.vector(obj$A_beta%*%beta)
+  quant.Yspatial = as.vector(mu + (obj$A_x%*%quant.Xe[ireo])*(obj$A_beta%*%beta))
+  
   #Compute coverage:
   quant.Yspatial.var <- quant.Xe^2*diag(inla.qinv(Q.post)) +
-            diag(inla.qinv(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)))
+    diag(inla.qinv(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)))
   T <- (quant.Ye -quant.Yspatial)/sqrt(quant.Yspatial.var)
   spatial.coverage[i] <- mean(abs(T) < 1.96)
-
+  
   qplot.yspatial = rep(NA,m*n)
   qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
   dim(qplot.yspatial)<- c(m,n)
   image.plot(lon.norway,lat.norway,qplot.yspatial, main = "Prediction")
-
-
+  
+  
   if(use_log){
     vars[i,] <- c(var(exp(quant.Ye) - exp(quant.y)),
                   var(exp(quant.Ye) - exp(quant.Yp)),
@@ -260,7 +275,7 @@ for(i in 1:n.cv){
     mse[i,] <- c(mean((exp(quant.Ye) - exp(quant.y))^2),
                  mean((exp(quant.Ye) - exp(quant.Yp))^2),
                  mean((exp(quant.Ye) - exp(quant.Yspatial))^2))
-
+    
   }else{
     vars[i,] <- c(var(quant.Ye - quant.y),
                   var(quant.Ye - quant.Yp),
@@ -272,12 +287,12 @@ for(i in 1:n.cv){
                  mean((quant.Ye - quant.Yp)^2),
                  mean((quant.Ye - quant.Yspatial)^2))
   }
-
+  
   cat("Resisual MSE:\n")
   cat("    Historcial data  : ", mse[i,1], "\n")
   cat("    Independent model: ", mse[i,2], "\n")
   cat("    Spatial model    : ", mse[i,3], " (coverage : ",spatial.coverage[i], ")\n")
-
+  
   if(do.plot){
     qplot.ye = qplot.se = qplot.yspatial = qplot.y = rep(NA,m*n)
     qplot.y[obs.ind] = quant.y[ireo]
@@ -290,53 +305,53 @@ for(i in 1:n.cv){
     image.plot(lon.norway,lat.norway,qplot.ye, main = "Observation")
     image.plot(lon.norway,lat.norway,qplot.yspatial, main = "Prediction")
     qplot.beta = rep(NA,m*n)
-    qplot.beta[obs.ind] = quant.est[ireo]
+    qplot.beta[obs.ind] = quant.est
     dim(qplot.beta) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.beta, main = "beta")
     qplot.X = rep(NA,m*n)
     qplot.X[obs.ind] = quant.Xe[ireo]
     dim(qplot.X) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.X, main = "X")
-
-
+    
+    
     dev.new()
     par(mfrow=c(3,3))
     if(use_log == FALSE){
       image.plot(lon.norway,lat.norway,qplot.ye, main = "Observation")
       image.plot(lon.norway,lat.norway,qplot.se,
-                  main = paste(name,"Prediction"))
+                 main = paste(name,"Prediction"))
       image.plot(lon.norway,lat.norway,qplot.yspatial,
-                  main = paste(name,"Spatial"))
+                 main = paste(name,"Spatial"))
       image.plot(lon.norway,lat.norway,qplot.ye - qplot.y,
-                  main ="Resid past data")
+                 main ="Resid past data")
       image.plot(lon.norway,lat.norway,qplot.ye - qplot.se,
-                  main = "Resid prediction")
+                 main = "Resid prediction")
       image.plot(lon.norway,lat.norway,qplot.ye - qplot.yspatial,
-                  main = "Resid spatial")
+                 main = "Resid spatial")
       hist(quant.Ye - quant.y,100,
-          main= paste("Var = ",formatC(var(quant.Ye - quant.y),digits=2)))
+           main= paste("Var = ",formatC(var(quant.Ye - quant.y),digits=2)))
       hist(quant.Ye - quant.Yp,100,
-          main= paste("Var = ",formatC(var(quant.Ye - quant.Yp),digits=2)))
+           main= paste("Var = ",formatC(var(quant.Ye - quant.Yp),digits=2)))
       hist(quant.Ye - quant.Yspatial,100,
-        main= paste("Var = ",formatC(var(quant.Ye - quant.Yspatial),digits=2)))
+           main= paste("Var = ",formatC(var(quant.Ye - quant.Yspatial),digits=2)))
     }else{
       image.plot(lon.norway,lat.norway,exp(qplot.ye), main = "Observation")
       image.plot(lon.norway,lat.norway,exp(qplot.se),
-                  main = paste(name,"Prediction"))
+                 main = paste(name,"Prediction"))
       image.plot(lon.norway,lat.norway,exp(qplot.yspatial),
-                  main = paste(name,"Spatial"))
+                 main = paste(name,"Spatial"))
       image.plot(lon.norway,lat.norway,exp(qplot.ye) - exp(qplot.y),
-                  main ="Resid past data")
+                 main ="Resid past data")
       image.plot(lon.norway,lat.norway,exp(qplot.ye) - exp(qplot.se),
-                  main = "Resid prediction")
+                 main = "Resid prediction")
       image.plot(lon.norway,lat.norway,exp(qplot.ye) - exp(qplot.yspatial),
-                  main = "Resid spatial")
+                 main = "Resid spatial")
       hist(exp(quant.Ye) - exp(quant.y),100, main= paste("Var = ",
-          formatC(var(exp(quant.Ye) - exp(quant.y)),digits=2)))
+                                                         formatC(var(exp(quant.Ye) - exp(quant.y)),digits=2)))
       hist(exp(quant.Ye) - exp(quant.Yp),100, main= paste("Var = ",
-          formatC(var(exp(quant.Ye) - exp(quant.Yp)),digits=2)))
+                                                          formatC(var(exp(quant.Ye) - exp(quant.Yp)),digits=2)))
       hist(exp(quant.Ye) - exp(quant.Yspatial),100,main= paste("Var = ",
-          formatC(var(exp(quant.Ye) - exp(quant.Yspatial)),digits=2)))
+                                                               formatC(var(exp(quant.Ye) - exp(quant.Yspatial)),digits=2)))
     }
   }
 }
