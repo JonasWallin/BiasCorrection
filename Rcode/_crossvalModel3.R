@@ -79,11 +79,11 @@ n <- dim(obj$M0)[1]
 
 Q.post <- Q_beta
 b <- Q_beta%*%rep(obj$mu_beta ,n)
-for( i in 1:length(obj$X)){
-  A_x_i = Diagonal(length(obj$A_x%*%obj$X[[1]]),x = as.vector(obj$A_x%*%obj$X[[i]]))%*%obj$A_beta
+for( j in 1:length(obj$X)){
+  A_x_i = Diagonal(length(obj$A_x%*%obj$X[[1]]),x = as.vector(obj$A_x%*%obj$X[[j]]))%*%obj$A_beta
   QA_x_it <- t(A_x_i)%*%Q_eps
   Q.post <- Q.post  + QA_x_it%*%A_x_i
-  b    <- b + QA_x_it%*%(obj$Y[[i]] - mu)
+  b    <- b + QA_x_it%*%(obj$Y[[j]] - mu)
   
 }
 Rp   <- chol(Q.post)

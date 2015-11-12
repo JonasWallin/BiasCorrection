@@ -121,3 +121,35 @@ ridx <- integer(mesh$n)
 ridx[idx[!is.na(idx)]] = which(!is.na(idx))
 reo <- match(obs.ind,ridx)
 ireo = 1:777; ireo[reo] = 1:777
+
+load_smooth <- function(type, data_location = NULL)
+{
+  #data 
+  #type is 'BCM' or 'ERA'
+  smooth.X = TRUE
+  
+  if(type=='BCM'){
+    use_BCMs = TRUE
+  }else{
+    use_BCMs = FALSE
+  }
+
+  if(is.null(data_location)==FALSE){
+    file_name = paste(data_location,type)
+    if(use_log)
+      file_name <- paste(file_name,"_log",sep="")
+    
+    file_name <- paste(file_name,"_season_", season, sep = "")
+    file_name <- paste(file_name,".RData", sep="")
+    if(file.exists(file_name)){
+      load(file_name)
+    }else{
+      source('smoothing_X.R', local=TRUE)
+    }
+    
+  }else{
+    source('smoothing_X.R', local=TRUE)
+  }
+  #
+  return(X_smooth)
+}

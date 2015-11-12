@@ -23,31 +23,16 @@ use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = FALSE           #Smooth the covariate?
+smooth.X = TRUE           #Smooth the covariate?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 
 
 source('_data_building.R')
 
 if(smooth.X){
-  alpha = 1
-  if(use_log == T){
-    load(paste("temp_data/Xsmooth_BCM_log_alpha",alpha,".RData",sep=""))
-    quant.BCM <- X_smoothed
-    load(paste("temp_data/Xsmooth_ERA_log_alpha",alpha,".RData",sep=""))
-    quant.ERA <- X_smoothed
-  }else{
-    load("temp_data/Xsmooth_BCM.RData")
-    quant.BCM <- X_smoothed
-    load("temp_data/Xsmooth_ERA.RData")
-    quant.ERA <- X_smoothed
-  }
+  quant.BCM <- load_smooth('BCM', data_location)
+  quant.ERA <- load_smooth('ERA', data_location)
 }
-
-
-###########################
-## Plot data
-###########################
 qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))

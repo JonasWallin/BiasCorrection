@@ -1,7 +1,6 @@
 ##
 # internal function for crossval.R
 ##
-cat('in _crossvalModel12.R')
 par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
 dim(par_est) <- c(777,2)
 alpha_est = par_est[,1]
