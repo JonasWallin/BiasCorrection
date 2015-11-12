@@ -3,7 +3,6 @@ if(exists("smooth.X") == FALSE){
   rm(list=ls())
   data_location = '../data/' #NULL
   graphics.off()
-  alpha <- 1
   #############################
   ## OPTIONS FOR ESTIMATION
   #############################

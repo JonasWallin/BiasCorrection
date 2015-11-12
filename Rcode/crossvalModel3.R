@@ -37,21 +37,21 @@ qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = quant.Y[[i]]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.ERA[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = quant.ERA[[i]][reo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.BCM[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = quant.BCM[[i]][reo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
@@ -83,7 +83,7 @@ for(i in 1:n.cv){
     name = "ERA"
   }
   quant.y   <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
-  quant.y <- quant.y[reo]
+  quant.y <- quant.y
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
   quant.Ye <- quant.Y[[i]]
   yv <- quant.Yt[[1]]
@@ -160,10 +160,10 @@ for(i in 1:n.cv){
   
   if(do.plot){
     qplot.ye = qplot.se = qplot.yspatial = qplot.y = rep(NA,m*n)
-    qplot.y[obs.ind] = quant.y[ireo]
-    qplot.ye[obs.ind] = quant.Ye[ireo]
-    qplot.se[obs.ind] = quant.Yp[ireo]
-    qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
+    qplot.y[obs.ind] = quant.y
+    qplot.ye[obs.ind] = quant.Ye
+    qplot.se[obs.ind] = quant.Yp
+    qplot.yspatial[obs.ind] = quant.Yspatial
     dim(qplot.y)<- dim(qplot.ye)<- dim(qplot.se)<- dim(qplot.yspatial)<- c(m,n)
     dev.new()
     par(mfrow=c(2,2))
@@ -174,7 +174,7 @@ for(i in 1:n.cv){
     dim(qplot.beta) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.beta, main = "beta")
     qplot.X = rep(NA,m*n)
-    qplot.X[obs.ind] = quant.Xe[ireo]
+    qplot.X[obs.ind] = quant.Xe[reo]
     dim(qplot.X) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.X, main = "X")
     
