@@ -122,6 +122,13 @@ ridx[idx[!is.na(idx)]] = which(!is.na(idx))
 reo <- match(obs.ind,ridx)
 ireo = 1:777; ireo[reo] = 1:777
 
+for(i in 1:n.cv){
+  quant.BCM[[i]] <- quant.BCM[[i]][reo]
+  quant.ERA[[i]] <-   quant.ERA[[i]][reo]
+  quant.Y[[i]]   <- quant.Y[[i]][reo]
+}
+
+
 load_smooth <- function(type, data_location = NULL)
 {
   #data 

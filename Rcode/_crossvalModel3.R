@@ -50,16 +50,14 @@ llike.mat2 <- function(p,obj)
 
 
 
-quant.Ye <- quant.Y[[i]]
-quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
 obj <- list(M0 = M0, M1 = M1, M2 = M2, reo = reo, ireo = ireo, n.cv = n.cv, N = 777, mu_beta = 0)
-obj$A_x         <-  Diagonal(length(quant.Y[[1]]))[,reo]#Diagonal(length(quant.Y[[1]])) #[reo,]
+obj$A_x         <-  Diagonal(length(quant.Y[[1]]))
 #obj$A_x         <-  obj$A_x[reo,]
-obj$A_eps       <- Diagonal(length(quant.Y[[1]]))[,reo]
-obj$A_beta      <- Diagonal(length(quant.Y[[1]]))[,reo]
+obj$A_eps       <- Diagonal(length(quant.Y[[1]]))
+obj$A_beta      <- Diagonal(length(quant.Y[[1]]))
 obj$X           <- quant.Xt
 for(j in 1:length(obj$X))
-{  obj$X[[j]]           <- quant.Xt[[j]][ireo] }
+{  obj$X[[j]]           <- quant.Xt[[j]] }
 
 obj$Y           <- quant.Yt
 
@@ -74,11 +72,11 @@ mu_b = rep(0, obj$N)
 Q_eps   <- obj$A_eps%*%(tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 ))%*%t(obj$A_eps)
 Q_beta  <- tau_beta   * (obj$M0  + kappa_beta   * obj$M1 + kappa_beta^2*obj$M2)
 
-n <- dim(obj$M0)[1]
+n_ <- dim(obj$M0)[1]
 
 
 Q.post <- Q_beta
-b <- Q_beta%*%rep(obj$mu_beta ,n)
+b <- Q_beta%*%rep(obj$mu_beta ,n_)
 for( j in 1:length(obj$X)){
   A_x_i = Diagonal(length(obj$A_x%*%obj$X[[1]]),x = as.vector(obj$A_x%*%obj$X[[j]]))%*%obj$A_beta
   QA_x_it <- t(A_x_i)%*%Q_eps

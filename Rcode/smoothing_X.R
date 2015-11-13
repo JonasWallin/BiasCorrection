@@ -101,7 +101,7 @@ for(kk in 1:length(use_BCMs)){
   }
   
    obj <- list(M0 = M0, M1 = M1, M2 = M2, reo = reo, ireo = ireo)
-   obj$A_x         <-  Diagonal(length(quant.Xt[[1]]))[reo,]#Diagonal(length(quant.Y[[1]])) #[reo,] 
+   obj$A_x         <-  Diagonal(length(quant.Xt[[1]]))
    obj$X_loc       <- quant.Xt 
 
 
