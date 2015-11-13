@@ -23,7 +23,7 @@ use_BCM_eval   = FALSE     #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = FALSE           #Smooth the covariate?
+smooth.X = TRUE           #Smooth the covariate?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 
 source('_data_building.R')
@@ -43,6 +43,8 @@ if(smooth.X){
 ###########################
 ## Plot data
 ###########################
+m = 58
+n = 63
 qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
