@@ -34,11 +34,11 @@ if(smooth.X){
   quant.ERA <- load_smooth('ERA', data_location)
 }
 
-for(i in 1:n.cv){
-  quant.BCM[[i]] <- quant.BCM[[i]][reo]
-  quant.ERA[[i]] <-   quant.ERA[[i]][reo]
-  quant.Y[[i]]   <- quant.Y[[i]][reo]
-}
+#for(i in 1:n.cv){
+#  quant.BCM[[i]] <- quant.BCM[[i]][reo]
+#  quant.ERA[[i]] <-   quant.ERA[[i]][reo]
+#  quant.Y[[i]]   <- quant.Y[[i]][reo]
+#}
 
 ###########################
 ## Plot data
