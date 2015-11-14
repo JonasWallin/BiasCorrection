@@ -15,14 +15,14 @@ llike.mat2 <- function(p,obj)
   mu_b = rep(0, obj$N)
   if(tau>1e-16 && kappa>1e-16 && tau_beta>1e-16 && kappa_beta > 1e-16)
   {
-    
-    
+
+
     Q_eps   <- obj$A_eps%*%(tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 ))%*%t(obj$A_eps)
     Q_beta  <- tau_beta   * (obj$M0  + kappa_beta   * obj$M1 + kappa_beta^2*obj$M2)
-    
+
     n <- dim(obj$M0)[1]
-    
-    
+
+
     Q_hat <- Q_beta
     b <- Q_beta%*%rep(obj$mu_beta ,n)
     yQy <- 0
@@ -32,14 +32,14 @@ llike.mat2 <- function(p,obj)
       Q_hat <- Q_hat  + QA_x_it%*%A_x_i
       b    <- b + QA_x_it%*%(obj$Y[[i]] - mu)
       Y_mu <- (obj$Y[[i]] - mu)
-      yQy <- yQy +  t(Y_mu)%*%Q_eps%*%Y_mu/2 
-      
+      yQy <- yQy +  t(Y_mu)%*%Q_eps%*%Y_mu/2
+
     }
 
-    
+
     Rp <- chol(Q_hat)
     v = solve(t(Rp), b)
-    l = (obj$n.cv-1)*sum(log(diag(chol(Q_eps)))) + sum(log(diag(chol(Q_beta))))  -sum(log(diag(Rp))) 
+    l = (obj$n.cv-1)*sum(log(diag(chol(Q_eps)))) + sum(log(diag(chol(Q_beta))))  -sum(log(diag(Rp)))
     l = l + t(v)%*%v/2 - yQy
     #l = l - (mu_b%*% Q_beta %*%mu_b)/2#correction for mean
     return(-as.double(l[1]))
@@ -71,18 +71,20 @@ kappa_beta = exp(res$par[5])
 mu_b = rep(0, obj$N)
 Q_eps   <- obj$A_eps%*%(tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 ))%*%t(obj$A_eps)
 Q_beta  <- tau_beta   * (obj$M0  + kappa_beta   * obj$M1 + kappa_beta^2*obj$M2)
-
+Q_beta = Q_beta[reo,reo]
+Q_beta = Q_beta[reo,reo]
 n_ <- dim(obj$M0)[1]
 
 
 Q.post <- Q_beta
 b <- Q_beta%*%rep(obj$mu_beta ,n_)
 for( j in 1:length(obj$X)){
-  A_x_i = Diagonal(length(obj$A_x%*%obj$X[[1]]),x = as.vector(obj$A_x%*%obj$X[[j]]))%*%obj$A_beta
+  A_x_i = Diagonal(777)*obj$X[[j]]
+  #A_x_i = Diagonal(length(obj$A_x%*%obj$X[[1]]),x = as.vector(obj$A_x%*%obj$X[[j]]))%*%obj$A_beta
   QA_x_it <- t(A_x_i)%*%Q_eps
   Q.post <- Q.post  + QA_x_it%*%A_x_i
   b    <- b + QA_x_it%*%(obj$Y[[j]] - mu)
-  
+
 }
 Rp   <- chol(Q.post)
 v    <- solve(t(Rp),b)
