@@ -19,7 +19,7 @@ library(INLA)
 do.plot = TRUE            #Visualise results?
 use_log = TRUE            #Use model in log scale?
 use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
-use_BCM_eval   = FALSE     #Evaluate results on BCM? If false, use ERA40
+use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
@@ -45,7 +45,7 @@ for(i in 1:n.cv){
 
 dev.new()
 par(mfrow = c(3,3))
-for(i in 1:n.cv){  
+for(i in 1:n.cv){
   qplot[obs.ind] = quant.ERA[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
@@ -66,17 +66,17 @@ spatial.coverage <- rep(0,n.cv)
 for(i in 1:n.cv){
   ind.test <- ind.sub[[i]]
   ind.train <- setdiff(ind,ind.sub[[i]])
-  
+
   if(use_BCM_train)
   {
     quant.Xt <- quant.BCM[setdiff(1:n.cv,i)]
   }else{
     quant.Xt <- quant.ERA[setdiff(1:n.cv,i)]
   }
-  
-  
-  
-  
+
+
+
+
   if(use_BCM_eval) {
     quant.Xe <- quant.BCM[[i]]
     name = "BCM"
@@ -100,24 +100,24 @@ for(i in 1:n.cv){
   dim(par_est) <- c(777,2)
   alpha_est = par_est[,1]
   beta_est = par_est[,2]
-  
+
   quant.Yp0 = alpha_est + beta_est*quant.Xe
-  
+
   xx = Diagonal(777,1)*quant.Xt[[1]]
   for(j in 2:(n.cv-1)){
     xx = rBind(xx,Diagonal(777,1)*quant.Xt[[j]])
   }
   xx = cBind(rep(1,dim(xx)[1]),xx)
-  
+
   par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
   alpha_est = par_est[1]
   beta_est = par_est[2:778]
-  
+
   quant.Yp = alpha_est + beta_est*quant.Xe
   source('_crossvalModel3.R')
   quant.est <- as.vector(obj$A_beta%*%beta)
   quant.Yspatial = as.vector(mu + (obj$A_x%*%quant.Xe)*(obj$A_beta%*%beta))
-  
+
   #Compute coverage:
   Q_ <- obj$A_beta%*%Q.post%*%t(obj$A_beta)
   Q_eps <- obj$A_eps %*%(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2))%*%t(obj$A_eps)
@@ -125,13 +125,13 @@ for(i in 1:n.cv){
     diag(inla.qinv(Q_eps))
   T <- (quant.Ye -quant.Yspatial)/sqrt(quant.Yspatial.var)
   spatial.coverage[i] <- mean(abs(T) < 1.96)
-  
+
   qplot.yspatial = rep(NA,m*n)
-  qplot.yspatial[obs.ind] = quant.Ye[ireo]
+  qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
   dim(qplot.yspatial)<- c(m,n)
   image.plot(lon.norway,lat.norway,qplot.yspatial, main = "Prediction")
-  
-  
+
+
   if(use_log){
     vars[i,] <- c(var(exp(quant.Ye) - exp(quant.y)),
                   var(exp(quant.Ye) - exp(quant.Yp)),
@@ -142,7 +142,7 @@ for(i in 1:n.cv){
     mse[i,] <- c(mean((exp(quant.Ye) - exp(quant.y))^2),
                  mean((exp(quant.Ye) - exp(quant.Yp))^2),
                  mean((exp(quant.Ye) - exp(quant.Yspatial))^2))
-    
+
   }else{
     vars[i,] <- c(var(quant.Ye - quant.y),
                   var(quant.Ye - quant.Yp),
@@ -154,18 +154,18 @@ for(i in 1:n.cv){
                  mean((quant.Ye - quant.Yp)^2),
                  mean((quant.Ye - quant.Yspatial)^2))
   }
-  
+
   cat("Resisual MSE:\n")
   cat("    Historcial data  : ", mse[i,1], "\n")
   cat("    Independent model: ", mse[i,2], "\n")
   cat("    Spatial model    : ", mse[i,3], " (coverage : ",spatial.coverage[i], ")\n")
-  
+
   if(do.plot){
     qplot.ye = qplot.se = qplot.yspatial = qplot.y = rep(NA,m*n)
     qplot.y[obs.ind] = quant.y[ireo]
     qplot.ye[obs.ind] = quant.Ye[ireo]
     qplot.se[obs.ind] = quant.Yp[ireo]
-    qplot.yspatial[obs.ind] = quant.Yspatial
+    qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
     dim(qplot.y)<- dim(qplot.ye)<- dim(qplot.se)<- dim(qplot.yspatial)<- c(m,n)
     dev.new()
     par(mfrow=c(2,2))
@@ -176,11 +176,11 @@ for(i in 1:n.cv){
     dim(qplot.beta) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.beta, main = "beta")
     qplot.X = rep(NA,m*n)
-    qplot.X[obs.ind] = as.vector(obj$A_x%*%quant.Xe)
+    qplot.X[obs.ind] = as.vector(obj$A_x%*%quant.Xe)[ireo]
     dim(qplot.X) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.X, main = "X")
-    
-    
+
+
     dev.new()
     par(mfrow=c(3,3))
     if(use_log == FALSE){

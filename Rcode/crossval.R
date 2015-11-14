@@ -19,7 +19,7 @@ library(INLA)
 do.plot = TRUE            #Visualise results?
 use_log = TRUE            #Use model in log scale?
 use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
-use_BCM_eval   = FALSE    #Evaluate results on BCM? If false, use ERA40
+use_BCM_eval   = TRUE    #Evaluate results on BCM? If false, use ERA40
 use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for

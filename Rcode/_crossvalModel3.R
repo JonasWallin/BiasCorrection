@@ -19,6 +19,8 @@ llike.mat2 <- function(p,obj)
 
     Q_eps   <- obj$A_eps%*%(tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 ))%*%t(obj$A_eps)
     Q_beta  <- tau_beta   * (obj$M0  + kappa_beta   * obj$M1 + kappa_beta^2*obj$M2)
+Q_beta = Q_beta[reo,reo]
+Q_beta = Q_beta[reo,reo]
 
     n <- dim(obj$M0)[1]
 
