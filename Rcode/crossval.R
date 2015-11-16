@@ -24,32 +24,25 @@ use_quant_scaling = FALSE #Scale spatial field by covariate?
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
 smooth.X = TRUE           #Smooth the covariate?
+smooth.beta = TRUE        #Smooth prior for beta?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 
 source('_data_building.R')
 
+quant.ERA.unsmooth = quant.ERA
 
 if(smooth.X){
   quant.BCM <- load_smooth('BCM', data_location)
   quant.ERA <- load_smooth('ERA', data_location)
 }
 
-#for(i in 1:n.cv){
-#  quant.BCM[[i]] <- quant.BCM[[i]][reo]
-#  quant.ERA[[i]] <-   quant.ERA[[i]][reo]
-#  quant.Y[[i]]   <- quant.Y[[i]][reo]
-#}
-
-###########################
-## Plot data
-###########################
 m = 58
 n = 63
 qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = quant.ERA.unsmooth[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
@@ -59,6 +52,20 @@ for(i in 1:n.cv){
   qplot[obs.ind] = quant.ERA[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
+
+
+
+###########################
+## Plot data
+###########################
+qplot = rep(NA,m*n)
+dev.new()
+par(mfrow = c(3,3))
+for(i in 1:n.cv){
+  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
+  image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
+}
+
 
 dev.new()
 par(mfrow = c(3,3))
@@ -104,9 +111,27 @@ for(i in 1:n.cv){
     xv <- c(xv,quant.Xt[[j]])
     xx = rBind(xx,cBind(Diagonal(777,1),Diagonal(777,1)*quant.Xt[[j]]))
   }
+par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+dim(par_est) <- c(777,2)
+alpha_est = par_est[,1]
+beta_est = par_est[,2]
+
+quant.Yp0 = alpha_est + beta_est*quant.Xe
+
+xx = Diagonal(777,1)*quant.Xt[[1]]
+for(j in 2:(n.cv-1)){
+  xx = rBind(xx,Diagonal(777,1)*quant.Xt[[j]])
+}
+xx = cBind(rep(1,dim(xx)[1]),xx)
+
+par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+alpha_est = par_est[1]
+beta_est = par_est[2:778]
+
+quant.Yp = alpha_est + beta_est*quant.Xe
 
   source('_crossvalModel12.R')
-  quant.Yspatial = mu + quant.Xe*quant.est
+
 
   #Compute coverage:
   quant.Yspatial.var <- quant.Xe^2*diag(inla.qinv(Q.post)) +

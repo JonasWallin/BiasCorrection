@@ -34,7 +34,8 @@ if(smooth.X){
   quant.ERA <- load_smooth('ERA', data_location)
 }
 
-
+m = 58
+n = 63
 qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
@@ -74,9 +75,6 @@ for(i in 1:n.cv){
     quant.Xt <- quant.ERA[setdiff(1:n.cv,i)]
   }
 
-
-
-
   if(use_BCM_eval) {
     quant.Xe <- quant.BCM[[i]]
     name = "BCM"
@@ -84,6 +82,7 @@ for(i in 1:n.cv){
     quant.Xe <- quant.ERA[[i]]
     name = "ERA"
   }
+  #Quantiles based on all test data
   quant.y   <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
   quant.y <- quant.y[reo]
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
@@ -96,6 +95,7 @@ for(i in 1:n.cv){
     xv <- c(xv,quant.Xt[[j]])
     xx = rBind(xx,cBind(Diagonal(777,1),Diagonal(777,1)*quant.Xt[[j]]))
   }
+
   par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
   dim(par_est) <- c(777,2)
   alpha_est = par_est[,1]
@@ -115,21 +115,15 @@ for(i in 1:n.cv){
 
   quant.Yp = alpha_est + beta_est*quant.Xe
   source('_crossvalModel3.R')
-  quant.est <- as.vector(obj$A_beta%*%beta)
-  quant.Yspatial = as.vector(mu + (obj$A_x%*%quant.Xe)*(obj$A_beta%*%beta))
+
 
   #Compute coverage:
-  Q_ <- obj$A_beta%*%Q.post%*%t(obj$A_beta)
-  Q_eps <- obj$A_eps %*%(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2))%*%t(obj$A_eps)
-  quant.Yspatial.var <- (obj$A_x%*%quant.Xe)^2*diag(inla.qinv(Q_)) +
-    diag(inla.qinv(Q_eps))
-  T <- (quant.Ye -quant.Yspatial)/sqrt(quant.Yspatial.var)
-  spatial.coverage[i] <- mean(abs(T) < 1.96)
+  Q_eps <- tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)
+  AX = Diagonal(777,quant.Xe)%*%Ai
+  qv <- diag(AX%*%solve(Q.post,t(AX))) + diag(inla.qinv(Q_eps))
 
-  qplot.yspatial = rep(NA,m*n)
-  qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
-  dim(qplot.yspatial)<- c(m,n)
-  image.plot(lon.norway,lat.norway,qplot.yspatial, main = "Prediction")
+  T <- (quant.Ye -quant.Yspatial)/sqrt(qv)
+  spatial.coverage[i] <- mean(abs(T) < 1.96)
 
 
   if(use_log){
@@ -167,16 +161,16 @@ for(i in 1:n.cv){
     qplot.se[obs.ind] = quant.Yp[ireo]
     qplot.yspatial[obs.ind] = quant.Yspatial[ireo]
     dim(qplot.y)<- dim(qplot.ye)<- dim(qplot.se)<- dim(qplot.yspatial)<- c(m,n)
-    dev.new()
+    #dev.new()
     par(mfrow=c(2,2))
     image.plot(lon.norway,lat.norway,qplot.ye, main = "Observation")
     image.plot(lon.norway,lat.norway,qplot.yspatial, main = "Prediction")
     qplot.beta = rep(NA,m*n)
-    qplot.beta[obs.ind] = quant.est[ireo]
+    qplot.beta[obs.ind] = as.vector(Ai%*%beta)[ireo]
     dim(qplot.beta) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.beta, main = "beta")
     qplot.X = rep(NA,m*n)
-    qplot.X[obs.ind] = as.vector(obj$A_x%*%quant.Xe)[ireo]
+    qplot.X[obs.ind] = as.vector(quant.Xe)[ireo]
     dim(qplot.X) <- c(m,n)
     image.plot(lon.norway,lat.norway,qplot.X, main = "X")
 

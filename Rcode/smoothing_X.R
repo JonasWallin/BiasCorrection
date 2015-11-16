@@ -24,29 +24,25 @@ cat('smoothing_X')
 
 posterior.mean <- function(p, obj)
 {
-  tau     = exp(p[1])
+ tau     = exp(p[1])
   kappa   = exp(p[2])
-  tau_eps = exp(p[3])
+  sigma2 = exp(p[3])
   mu      = p[4]
+  Y_mu = obj$Y - mu
+  Q0 <- tau*(obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 )
+  Q <- kronecker(Diagonal(obj$n.cv,1),Q0)
+  Q.post <- Q + t(obj$A)%*%obj$A/sigma2
+  Rp <- chol(Q.post)
+  b <- Y_mu/sigma2
+  v = solve(t(Rp),b)
 
-  Q_X  <- tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 )
-
-  n <- dim(obj$M0)[1]
-  N <- length(obj$X_loc)
-  QA_xt    <- tau_eps * t(obj$A_x)
-  Q_hat <- Q_X + QA_xt%*%obj$A_x
-  Rp <- chol(Q_hat)
-  b_0 <- Q_X%*%rep(mu, n)
-  yty <- 0
-  vtv <- 0
-  X_smooth <- obj$X_loc
-  for(i in 1:N){
-    Y <- obj$X_loc[[i]]
-    b    <- QA_xt%*%Y + b_0
-    v    <- solve(t(Rp), b)
-    X_smooth[[i]]  <- as.vector(solve(Rp, v))[reo][reo]
-
+  xv  <- as.vector(mu+solve(Rp, v))
+  dim(xv) <- c(777,obj$n.cv)
+  X_smooth <- list()
+  for(i in 1:obj$n.cv){
+    X_smooth[[i]] = xv[,i]
   }
+
   return(X_smooth)
 }
 
@@ -54,36 +50,20 @@ llike.mat2 <- function(p,obj)
 {
   tau     = exp(p[1])
   kappa   = exp(p[2])
-  tau_eps = exp(p[3])
+  sigma2 = exp(p[3])
   mu      = p[4]
-  if(tau>1e-16 && kappa>1e-16 && tau_eps>1e-16 )
+  if(tau>1e-16 && kappa>1e-16)
   {
+    Y_mu = obj$Y - mu
+    Q0 <- tau*(obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 )
+    Q <- kronecker(Diagonal(obj$n.cv,1),Q0)
+    Q.post <- Q + t(obj$A)%*%obj$A/sigma2
+    Rp <- chol(Q.post)
+    b <- Y_mu/sigma2
 
-
-    Q_X  <- tau    * (obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 )
-
-    n <- dim(obj$M0)[1]
-    N <- length(obj$X_loc)
-    QA_xt    <- tau_eps * t(obj$A_x)
-    Q_hat <- Q_X + QA_xt%*%obj$A_x
-    Rp <- chol(Q_hat)
-    b_0 <- Q_X%*%rep(mu, n)
-    yty <- 0
-    vtv <- 0
-    for(i in 1:N){
-      Y <- obj$X_loc[[i]]
-      b    <- QA_xt%*%Y + b_0
-      v    <- solve(t(Rp), b)
-      #v   <- solve(Rp, v)
-      yty <- yty +  tau_eps * (t(Y)%*%Y)/2
-      vtv <- vtv +  (t(v)%*%v)/2
-    }
-
-    #determinants
-    l = - N * sum(log(diag(Rp))) + N * sum(log(diag(chol(Q_X))))  + 0.5 * N * n * log(tau_eps)
-    #
-    l = l + vtv - yty
-    l = l - N * (t(rep(mu, n))%*% b_0)/2#correction for mean
+    v = solve(t(Rp),b)
+    l = obj$n.cv*sum(log(diag(chol(Q0)))) -sum(log(diag(Rp))) - length(Y_mu)*log(sigma2)/2 + t(v)%*%v/2 - t(Y_mu)%*%Y_mu/(2*sigma2)
+    #cat(p,-as.double(l[1]),'\n')
     return(-as.double(l[1]))
   } else {
     return(-Inf)
@@ -100,11 +80,20 @@ for(kk in 1:length(use_BCMs)){
     quant.Xt <- quant.ERA
   }
 
-   obj <- list(M0 = M0, M1 = M1, M2 = M2, reo = reo, ireo = ireo)
-   obj$A_x         <-  inla.spde.make.A(mesh,loc)[reo,]
-      #Diagonal(length(quant.Xt[[1]]))
-   obj$X_loc       <- quant.Xt
+  n.cv = length(quant.Xt)
+  A = Diagonal(777*n.cv,1)
+  xx = quant.Xt[[1]]
+  for(j in 2:n.cv){
+    xx = cBind(xx,quant.Xt[[j]])
+  }
+  dim(xx) <- c(777*n.cv,1)
 
+  obj <- list(M0 = M0[reo.orig,reo.orig][reo.orig,reo.orig],
+              M1 = M1[reo.orig,reo.orig][reo.orig,reo.orig],
+              M2 = M2[reo.orig,reo.orig][reo.orig,reo.orig],
+              A = A,
+              n.cv = length(quant.Xt),
+              Y = xx)
 
   res <- optim(c(0,0,0,0), llike.mat2,control = list(REPORT = 1,maxit = 20000), obj=obj)
   print(paste("res$convergere =",res$convergence))

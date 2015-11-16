@@ -52,10 +52,10 @@ for(t in 1:n.grid)
 {
   Y_train[t,] = dataTraining.obs[[season]][[t]]
   Y_eval[t,]  =dataTest.obs[[season]][[t]]
-  
+
   BCM_train[t,] = dataTraining.bcm[[season]][[t]]
   BCM_eval[t,]  =dataTest.bcm[[season]][[t]]
-  
+
   ERA_train[t,] = dataTraining.era[[season]][[t]]
   ERA_eval[t,]  =dataTest.era[[season]][[t]]
 }
@@ -122,6 +122,17 @@ ridx[idx[!is.na(idx)]] = which(!is.na(idx))
 reo <- match(obs.ind,ridx)
 ireo = 1:777; ireo[reo] = 1:777
 
+
+M0 <- M0[ireo,ireo]
+M1 <- M1[ireo,ireo]
+M2 <- M2[ireo,ireo]
+
+reo.orig = reo
+ireo.orig = ireo
+
+reo = 1:777
+ireo = 1:777
+
 for(i in 1:n.cv){
   quant.BCM[[i]] <- quant.BCM[[i]][reo]
   quant.ERA[[i]] <-   quant.ERA[[i]][reo]
@@ -129,12 +140,13 @@ for(i in 1:n.cv){
 }
 
 
+
 load_smooth <- function(type, data_location = NULL)
 {
-  #data 
+  #data
   #type is 'BCM' or 'ERA'
   smooth.X = TRUE
-  
+
   if(type=='BCM'){
     use_BCMs = TRUE
   }else{
@@ -145,7 +157,7 @@ load_smooth <- function(type, data_location = NULL)
     file_name = paste(data_location,type)
     if(use_log)
       file_name <- paste(file_name,"_log",sep="")
-    
+
     file_name <- paste(file_name,"_season_", season, sep = "")
     file_name <- paste(file_name,".RData", sep="")
     if(file.exists(file_name)){
@@ -153,7 +165,7 @@ load_smooth <- function(type, data_location = NULL)
     }else{
       source('smoothing_X.R', local=TRUE)
     }
-    
+
   }else{
     source('smoothing_X.R', local=TRUE)
   }
