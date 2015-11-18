@@ -33,10 +33,10 @@ posterior.mean <- function(p, obj)
   Q <- kronecker(Diagonal(obj$n.cv,1),Q0)
   Q.post <- Q + t(obj$A)%*%obj$A/sigma2
   Rp <- chol(Q.post)
-  b <- Y_mu/sigma2
+  b <- t(obj$A)%*%Y_mu/sigma2
   v = solve(t(Rp),b)
 
-  xv  <- as.vector(mu+solve(Rp, v))
+  xv  <- as.vector(obj$A%*%(mu+solve(Rp, v)))
   dim(xv) <- c(777,obj$n.cv)
   X_smooth <- list()
   for(i in 1:obj$n.cv){
@@ -57,10 +57,9 @@ llike.mat2 <- function(p,obj)
     Y_mu = obj$Y - mu
     Q0 <- tau*(obj$M0 + kappa * obj$M1 + kappa^2*obj$M2 )
     Q <- kronecker(Diagonal(obj$n.cv,1),Q0)
-    Q.post <- Q + t(obj$A)%*%obj$A/sigma2
+    Q.post <- Q + obj$AtA/sigma2
     Rp <- chol(Q.post)
-    b <- Y_mu/sigma2
-
+    b <- t(obj$A)%*%Y_mu/sigma2
     v = solve(t(Rp),b)
     l = obj$n.cv*sum(log(diag(chol(Q0)))) -sum(log(diag(Rp))) - length(Y_mu)*log(sigma2)/2 + t(v)%*%v/2 - t(Y_mu)%*%Y_mu/(2*sigma2)
     #cat(p,-as.double(l[1]),'\n')
@@ -81,21 +80,23 @@ for(kk in 1:length(use_BCMs)){
   }
 
   n.cv = length(quant.Xt)
-  A = Diagonal(777*n.cv,1)
+  A = kronecker(Diagonal(n.cv),Ax)#Diagonal(777*n.cv,1)
   xx = quant.Xt[[1]]
   for(j in 2:n.cv){
     xx = cBind(xx,quant.Xt[[j]])
   }
   dim(xx) <- c(777*n.cv,1)
 
-  obj <- list(M0 = M0[reo.orig,reo.orig][reo.orig,reo.orig],
-              M1 = M1[reo.orig,reo.orig][reo.orig,reo.orig],
-              M2 = M2[reo.orig,reo.orig][reo.orig,reo.orig],
+  obj <- list(M0 = M0,#[reo.orig,reo.orig][reo.orig,reo.orig],
+              M1 = M1,#[reo.orig,reo.orig][reo.orig,reo.orig],
+              M2 = M2,#[reo.orig,reo.orig][reo.orig,reo.orig],
               A = A,
+              AtA = t(A)%*%A,
               n.cv = length(quant.Xt),
               Y = xx)
 
-  res <- optim(c(0,0,0,0), llike.mat2,control = list(REPORT = 1,maxit = 20000), obj=obj)
+  p0 <- c(0.1817722, -1.172809, -2.527773, 2.351842)
+  res <- optim(p0, llike.mat2,control = list(REPORT = 1,maxit = 20000), obj=obj)
   print(paste("res$convergere =",res$convergence))
   X_smooth <- posterior.mean(res$par, obj)
 

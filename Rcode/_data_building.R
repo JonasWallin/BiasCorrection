@@ -1,8 +1,7 @@
 cat("-- Model details --\n")
 cat("Model : ")
 if(use_log){ cat("log")}else { cat("linear")}
-if(use_quant_scaling){cat(" with ")}else{ cat(" without ")}
-cat("quantile scaling \n")
+cat("\n")
 cat("Training Data :")
 if(use_BCM_train){cat(" BCM")}else{cat(" ERA40")}
 cat("\nEvaluation Data :")
@@ -106,15 +105,27 @@ loc = cBind(as.vector(lon.norway),as.vector(lat.norway))[obs.ind,]
 oi = rep(FALSE,m*n)
 oi[obs.ind] = TRUE
 mesh = excursions:::submesh.grid(matrix(oi,m,n),
-                                 list(loc=cBind(as.vector(lon.norway),as.vector(lat.norway))
+                                 list(loc=cBind(as.vector(lon.norway),
+                                                as.vector(lat.norway))
                                       ,dims=c(m,n)))
+
+#mesh = inla.mesh.2d(loc,max.edge = c(1,1),offset=c(0.4,1))
 
 fem = inla.fmesher.smorg(mesh$loc, mesh$graph$tv, fem = 2,
                          output = list("c0", "c1", "g1", "g2"))
 
-M0 <- t(fem$g1)%*%Diagonal(mesh$n,1/rowSums(fem$c1))%*%fem$g1
-M1 <- fem$g1 + t(fem$g1)
-M2 <- fem$c1
+if(alpha == 2){
+  M0 <- t(fem$g1)%*%Diagonal(mesh$n,1/rowSums(fem$c1))%*%fem$g1
+  M1 <- fem$g1 + t(fem$g1)
+  M2 <- fem$c1
+} else if (alpha == 1) {
+  M0 <- fem$g1
+  M1 <- fem$c1
+  M2 <- 0*fem$c1
+} else {
+  warning("Only alpha = 1 and alpha = 2 supported.")
+}
+
 
 idx <- mesh$idx$loc
 ridx <- integer(mesh$n)
@@ -123,10 +134,12 @@ reo <- match(obs.ind,ridx)
 ireo = 1:777; ireo[reo] = 1:777
 
 
-M0 <- M0[ireo,ireo]
-M1 <- M1[ireo,ireo]
-M2 <- M2[ireo,ireo]
+M0 <- M0[reo,reo]
+M1 <- M1[reo,reo]
+M2 <- M2[reo,reo]
 
+#Ax <- inla.spde.make.A(mesh,loc)
+Ax  = Diagonal(777)
 reo.orig = reo
 ireo.orig = ireo
 

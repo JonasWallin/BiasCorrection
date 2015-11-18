@@ -19,30 +19,34 @@ library(INLA)
 do.plot = TRUE            #Visualise results?
 use_log = TRUE            #Use model in log scale?
 use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
-use_BCM_eval   = TRUE    #Evaluate results on BCM? If false, use ERA40
-use_quant_scaling = FALSE #Scale spatial field by covariate?
+use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = TRUE           #Smooth the covariate?
-smooth.beta = TRUE        #Smooth prior for beta?
+smooth.X = FALSE           #Smooth the covariate?
+smooth.beta = FALSE       #Smooth prior for beta?
+smooth.error = TRUE       #Smooth prior for eps?
 season = 1                #Season to work with (1=winter, 2=spring,...)
-
+alpha = 1                 #Smoothness of random fields
 source('_data_building.R')
-
-quant.ERA.unsmooth = quant.ERA
 
 if(smooth.X){
   quant.BCM <- load_smooth('BCM', data_location)
   quant.ERA <- load_smooth('ERA', data_location)
 }
 
+
+###########################
+## Plot data
+###########################
+if(0){
 m = 58
 n = 63
+
 qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.ERA.unsmooth[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
@@ -54,26 +58,13 @@ for(i in 1:n.cv){
 }
 
 
-
-###########################
-## Plot data
-###########################
-qplot = rep(NA,m*n)
-dev.new()
-par(mfrow = c(3,3))
-for(i in 1:n.cv){
-  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
-  image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
-}
-
-
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
   qplot[obs.ind] = quant.BCM[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
-
+}
 ##########################
 ## Run cross validation
 ##########################
@@ -100,7 +91,6 @@ for(i in 1:n.cv){
   }
   #Quantiles based on all test data
   quant.y   <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
-  quant.y <- quant.y[reo]
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
   quant.Ye <- quant.Y[[i]]
   yv <- quant.Yt[[1]]
