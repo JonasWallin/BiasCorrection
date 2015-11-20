@@ -68,6 +68,56 @@ llike.mat2 <- function(p,obj)
     return(-Inf)
   }
 }
+matern.cov <- function(D,kappa,sigma2,nu)
+{
+  Sigma <- sigma2*2^(1-nu)*(kappa*D)^nu * besselK(kappa*D,nu)/gamma(nu)
+  if(is.matrix(Sigma)){
+    diag(Sigma) <- sigma2
+  } else {
+    Sigma[1] <- sigma2
+  }
+  return(Sigma)
+}
+
+llike.cov <- function(p,obj)
+{
+  cat(p)
+
+  n <- length(obj$Y[[1]])
+  n.rep <- length(obj$Y)
+  mu      = p[5]
+  Sigma.X <- matern.cov(obj$D,kappa=exp(p[2]),sigma2 = exp(p[1]),nu=exp(p[3]))
+  Sigma.E <- exp(p[4])*Diagonal(n)
+
+  Sigma <- Sigma.X + Sigma.E
+  R <- try(chol(Sigma),silent=TRUE)
+  if(class(R) == "try-error")
+    return(-Inf)
+
+  l <- -n.rep*sum(log(diag(R)))
+  for(i in 1:n.rep){
+    v <- solve(t(R),obj$Y[[i]]-mu)
+    l <- l - t(v)%*%v/2
+  }
+  cat(' ',-as.double(l[1]),'\n')
+  return(-as.double(l[1]))
+}
+
+
+posterior.mean.cov <- function(p, obj)
+{
+  n <- length(obj$Y[[1]])
+  n.rep <- length(obj$Y)
+  mu      = p[5]
+  Sigma.X <- matern.cov(obj$D,kappa=exp(p[2]),sigma2 = exp(p[1]),nu=exp(p[3]))
+  sigma2 = exp(p[4])
+  Sigma.post = solve(solve(Sigma.X) + Diagonal(n)/sigma2)
+  X_smooth <- list()
+  for(i in 1:n.rep){
+    X_smooth[[i]] = mu + Sigma.post%*%(obj$Y[[i]]-mu)/sigma2
+  }
+  return(X_smooth)
+}
 
 for(kk in 1:length(use_BCMs)){
 
@@ -80,14 +130,27 @@ for(kk in 1:length(use_BCMs)){
   }
 
   n.cv = length(quant.Xt)
-  A = kronecker(Diagonal(n.cv),Ax)#Diagonal(777*n.cv,1)
-  xx = quant.Xt[[1]]
-  for(j in 2:n.cv){
-    xx = cBind(xx,quant.Xt[[j]])
-  }
-  dim(xx) <- c(777*n.cv,1)
+  if(use.cov){
 
-  obj <- list(M0 = M0,#[reo.orig,reo.orig][reo.orig,reo.orig],
+    obj <- list(D=as.matrix(dist(loc)),Y = quant.Xt)
+    if(use_BCM){
+      p0 <- c(-1.268291, -1.046623, -0.3034919, -2.552335, 2.359651)
+    } else {
+      p0 <- c(-0.851345, -2.389743, -0.7534426, -2.207971, 2.217278)
+    }
+    res <- optim(p0, llike.cov,
+                 control = list(REPORT = 1,maxit = 20000), obj=obj)
+    print(paste("res$convergere =",res$convergence))
+    X_smooth <- posterior.mean.cov(res$par,obj)
+  } else {
+    A = kronecker(Diagonal(n.cv),Ax)#Diagonal(777*n.cv,1)
+    xx = quant.Xt[[1]]
+    for(j in 2:n.cv){
+      xx = cBind(xx,quant.Xt[[j]])
+    }
+    dim(xx) <- c(777*n.cv,1)
+
+    obj <- list(M0 = M0,#[reo.orig,reo.orig][reo.orig,reo.orig],
               M1 = M1,#[reo.orig,reo.orig][reo.orig,reo.orig],
               M2 = M2,#[reo.orig,reo.orig][reo.orig,reo.orig],
               A = A,
@@ -95,10 +158,12 @@ for(kk in 1:length(use_BCMs)){
               n.cv = length(quant.Xt),
               Y = xx)
 
-  p0 <- c(0.1817722, -1.172809, -2.527773, 2.351842)
-  res <- optim(p0, llike.mat2,control = list(REPORT = 1,maxit = 20000), obj=obj)
-  print(paste("res$convergere =",res$convergence))
-  X_smooth <- posterior.mean(res$par, obj)
+    p0 <- c(0.1817722, -1.172809, -2.527773, 2.351842)
+    res <- optim(p0, llike.mat2,
+                  control = list(REPORT = 1,maxit = 20000), obj=obj)
+    print(paste("res$convergere =",res$convergence))
+    X_smooth <- posterior.mean(res$par, obj)
+  }
 
   if(exists("smooth.X") == FALSE){
     file_name <- paste(data_location,"Xsmooth_",sep="")

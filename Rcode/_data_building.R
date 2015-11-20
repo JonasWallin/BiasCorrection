@@ -1,8 +1,13 @@
 cat("-- Model details --\n")
 cat("Model : ")
-if(use_log){ cat("log")}else { cat("linear")}
-cat("\n")
-cat("Training Data :")
+#if(use_log){ cat("log")}else { cat("linear")}
+cat("\nSmooth X :")
+if(smooth.X){cat(" Yes")}else{cat(" No")}
+cat("\nSmooth beta :")
+if(smooth.beta){cat(" Yes")}else{cat(" No")}
+cat("\nSmooth error :")
+if(smooth.error){cat(" Yes")}else{cat(" No")}
+cat("\nTraining Data :")
 if(use_BCM_train){cat(" BCM")}else{cat(" ERA40")}
 cat("\nEvaluation Data :")
 if(use_BCM_eval){cat(" BCM ")}else {cat(" ERA40 ")}

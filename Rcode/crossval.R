@@ -22,11 +22,12 @@ use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
 use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 n.cv = 7                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = FALSE           #Smooth the covariate?
-smooth.beta = FALSE       #Smooth prior for beta?
+smooth.X = TRUE           #Smooth the covariate?
+smooth.beta = TRUE       #Smooth prior for beta?
 smooth.error = TRUE       #Smooth prior for eps?
 season = 1                #Season to work with (1=winter, 2=spring,...)
-alpha = 1                 #Smoothness of random fields
+alpha = 2                 #Smoothness of random fields
+use.cov = TRUE
 source('_data_building.R')
 
 if(smooth.X){
@@ -34,10 +35,28 @@ if(smooth.X){
   quant.ERA <- load_smooth('ERA', data_location)
 }
 
+for(i in 1:n.cv){
+  quant.ERA[[i]] = as.double(quant.ERA[[i]])
+  quant.BCM[[i]] = as.double(quant.BCM[[i]])
+}
 
+if(0){
+file_name = paste(data_location,"ERA")
+if(use_log){ file_name <- paste(file_name,"_log",sep="")}
+file_name <- paste(file_name,"_season_", season,".RData", sep="")
+X_smooth <- quant.ERA
+save(X_smooth,file=file_name)
+file_name = paste(data_location,"BCM")
+if(use_log){ file_name <- paste(file_name,"_log",sep="")}
+file_name <- paste(file_name,"_season_", season,".RData", sep="")
+X_smooth <- quant.BCM
+save(X_smooth,file=file_name)
+}
 ###########################
 ## Plot data
 ###########################
+#ggplot() +  geom_point(aes(x=loc[,1],y=loc[,2],colour=quant.Xt[[1]]), size=2,  alpha=1) + scale_colour_gradientn(colours=tim.colors(100))
+
 if(0){
 m = 58
 n = 63
@@ -124,8 +143,13 @@ quant.Yp = alpha_est + beta_est*quant.Xe
 
 
   #Compute coverage:
-  quant.Yspatial.var <- quant.Xe^2*diag(inla.qinv(Q.post)) +
-            diag(inla.qinv(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)))
+  if(use.cov){
+    Sigma.post <- solve(Q.post)
+    quant.Yspatial.var <- quant.Xe^2*diag(Sigma.post) + diag(Sigma.E)
+  } else {
+    quant.Yspatial.var <- quant.Xe^2*diag(inla.qinv(Q.post)) +
+              diag(inla.qinv(tau*(obj$M0 + kappa*obj$M1 + kappa^2*obj$M2)))
+  }
   T <- (quant.Ye -quant.Yspatial)/sqrt(quant.Yspatial.var)
   spatial.coverage[i] <- mean(abs(T) < 1.96)
 
@@ -162,6 +186,7 @@ quant.Yp = alpha_est + beta_est*quant.Xe
   cat("    Historcial data  : ", mse[i,1], "\n")
   cat("    Independent model: ", mse[i,2], "\n")
   cat("    Spatial model    : ", mse[i,3], " (coverage : ",spatial.coverage[i], ")\n")
+  print(mse)
 
   if(do.plot){
     qplot.ye = qplot.se = qplot.yspatial = qplot.y = rep(NA,m*n)
