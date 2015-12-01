@@ -134,9 +134,9 @@ for(kk in 1:length(use_BCMs)){
 
     obj <- list(D=as.matrix(dist(loc)),Y = quant.Xt)
     if(use_BCM){
-      p0 <- c(-1.268291, -1.046623, -0.3034919, -2.552335, 2.359651)
-    } else {
       p0 <- c(-0.851345, -2.389743, -0.7534426, -2.207971, 2.217278)
+    } else {
+      p0 <- c(-1.268291, -1.046623, -0.3034919, -2.552335, 2.359651)
     }
     res <- optim(p0, llike.cov,
                  control = list(REPORT = 1,maxit = 20000), obj=obj)

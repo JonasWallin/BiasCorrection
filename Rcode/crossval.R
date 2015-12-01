@@ -20,11 +20,11 @@ do.plot = TRUE            #Visualise results?
 use_log = TRUE            #Use model in log scale?
 use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
 use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
-n.cv = 7                  #Number of cross validation sets
+n.cv = 8                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
 smooth.X = TRUE           #Smooth the covariate?
 smooth.beta = TRUE       #Smooth prior for beta?
-smooth.error = TRUE       #Smooth prior for eps?
+smooth.error = FALSE       #Smooth prior for eps?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 alpha = 2                 #Smoothness of random fields
 use.cov = TRUE
@@ -40,24 +40,10 @@ for(i in 1:n.cv){
   quant.BCM[[i]] = as.double(quant.BCM[[i]])
 }
 
-if(0){
-file_name = paste(data_location,"ERA")
-if(use_log){ file_name <- paste(file_name,"_log",sep="")}
-file_name <- paste(file_name,"_season_", season,".RData", sep="")
-X_smooth <- quant.ERA
-save(X_smooth,file=file_name)
-file_name = paste(data_location,"BCM")
-if(use_log){ file_name <- paste(file_name,"_log",sep="")}
-file_name <- paste(file_name,"_season_", season,".RData", sep="")
-X_smooth <- quant.BCM
-save(X_smooth,file=file_name)
-}
 ###########################
 ## Plot data
 ###########################
-#ggplot() +  geom_point(aes(x=loc[,1],y=loc[,2],colour=quant.Xt[[1]]), size=2,  alpha=1) + scale_colour_gradientn(colours=tim.colors(100))
 
-if(0){
 m = 58
 n = 63
 
@@ -65,7 +51,7 @@ qplot = rep(NA,m*n)
 dev.new()
 par(mfrow = c(3,3))
 for(i in 1:n.cv){
-  qplot[obs.ind] = quant.Y[[i]][ireo]; dim(qplot) <- c(m,n)
+  qplot[obs.ind] = exp(quant.Y[[i]][ireo]); dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
 
@@ -83,7 +69,7 @@ for(i in 1:n.cv){
   qplot[obs.ind] = quant.BCM[[i]][ireo]; dim(qplot) <- c(m,n)
   image.plot(lon.norway,lat.norway,qplot,ylab="",xlab="")
 }
-}
+
 ##########################
 ## Run cross validation
 ##########################
@@ -109,7 +95,7 @@ for(i in 1:n.cv){
     name = "ERA"
   }
   #Quantiles based on all test data
-  quant.y   <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
+  quant.y  <- apply(Y[,setdiff(ind,ind.sub[[i]])],1,quantile,probs=c(q))
   quant.Yt <- quant.Y[setdiff(1:n.cv,i)]
   quant.Ye <- quant.Y[[i]]
   yv <- quant.Yt[[1]]
@@ -120,24 +106,24 @@ for(i in 1:n.cv){
     xv <- c(xv,quant.Xt[[j]])
     xx = rBind(xx,cBind(Diagonal(777,1),Diagonal(777,1)*quant.Xt[[j]]))
   }
-par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
-dim(par_est) <- c(777,2)
-alpha_est = par_est[,1]
-beta_est = par_est[,2]
+  par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+  dim(par_est) <- c(777,2)
+  alpha_est = par_est[,1]
+  beta_est = par_est[,2]
 
-quant.Yp0 = alpha_est + beta_est*quant.Xe
+  quant.Yp0 = alpha_est + beta_est*quant.Xe
 
-xx = Diagonal(777,1)*quant.Xt[[1]]
-for(j in 2:(n.cv-1)){
-  xx = rBind(xx,Diagonal(777,1)*quant.Xt[[j]])
-}
-xx = cBind(rep(1,dim(xx)[1]),xx)
+  xx = Diagonal(777,1)*quant.Xt[[1]]
+  for(j in 2:(n.cv-1)){
+    xx = rBind(xx,Diagonal(777,1)*quant.Xt[[j]])
+  }
+  xx = cBind(rep(1,dim(xx)[1]),xx)
 
-par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
-alpha_est = par_est[1]
-beta_est = par_est[2:778]
+  par_est = solve(t(xx)%*%xx,t(xx)%*%yv)
+  alpha_est = par_est[1]
+  beta_est = par_est[2:778]
 
-quant.Yp = alpha_est + beta_est*quant.Xe
+  quant.Yp = alpha_est + beta_est*quant.Xe
 
   source('_crossvalModel12.R')
 
@@ -250,4 +236,3 @@ quant.Yp = alpha_est + beta_est*quant.Xe
     }
   }
 }
-

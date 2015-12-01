@@ -1,19 +1,12 @@
-function [beta beta_var e_var]  = posterior_beta(theta, obj)
-
-
-
+function [beta beta_var e_var]  = posterior_beta_0(theta, obj)
 
 tau        = exp(theta(1));
 kappa      = exp(theta(2));
 mu         = theta(3);
 tau_beta   = exp(theta(4));
-kappa_beta = exp(theta(5));
-mu_b = theta(6);
+mu_b = 0;%theta(6);
 Q_eps  = tau *       (obj.M0 + kappa*obj.M1      + kappa^2*obj.M2 );
-Q_beta = tau_beta  * (obj.M0 + kappa_beta*obj.M1 + kappa_beta^2*obj.M2 );
-%Q_beta = Q_beta(obj.reo,obj.reo);
-%Q_beta = Q_beta(obj.reo,obj.reo);
-%Q_eps = Q_eps(obj.reo,obj.reo);
+Q_beta = tau_beta  * speye(size(obj.M0));
 
 mu_b = mu_b  *ones(length(Q_beta), 1);
 

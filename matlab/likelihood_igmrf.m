@@ -4,12 +4,11 @@ function lik = likelihood_1(theta, obj)
 tau        = exp(theta(1));
 mu         = theta(2);
 tau_beta   = exp(theta(3));
-kappa_beta = exp(theta(4));
 
 n = length(obj.X{1});
 
 Q_eps  = tau * speye(n);
-Q_beta = tau_beta  * (obj.M0 + kappa_beta*obj.M1 + kappa_beta^2*obj.M2 );
+Q_beta = tau_beta*obj.Qx;
 
 [R_beta, p] = chol(Q_beta);
 if p == 1; lik = inf;    return; end
@@ -31,7 +30,7 @@ end
 if p == 1; lik = inf;    return; end
 v = R'\b;
 lik = length(obj.X)*n*theta(1)/2 ...
-    + sum(log(diag(R_beta))) - sum(log(diag(R))) ...
+    + length(obj.Qx-10)*theta(3)/2 - sum(log(diag(R))) ...
     + v'*v/2 - yQy;
 %lik = lik - (theta(1)-10)^2/(2*0.0001);
 lik = -lik;

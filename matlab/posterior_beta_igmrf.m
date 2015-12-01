@@ -1,15 +1,14 @@
-function [beta beta_var e_var] = posterior_beta_1(theta, obj)
+function [beta beta_var e_var] = posterior_beta_igmrf(theta, obj)
 
 
 tau        = exp(theta(1));
 mu         = theta(2);
 tau_beta   = exp(theta(3));
-kappa_beta = exp(theta(4));
 
 n = length(obj.X{1});
 
 Q_eps  = tau * speye(n);
-Q_beta = tau_beta  * (obj.M0 + kappa_beta*obj.M1 + kappa_beta^2*obj.M2 );
+Q_beta = tau_beta*obj.Qx;
 
 Q_hat= Q_beta;
 b = 0;
