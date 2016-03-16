@@ -16,4 +16,5 @@ The main code to run model 0,1,2 of the crossvalidation code is __Rcode/corssval
 This code will download all the needed data, but not store it. If one would like to store the
 data one needs to run the script __Rcode/DownloadData.R__, and then specify the location of the files in  __Rcode/corssval.R__ by changing the variable `data_location`.
 
-The same applies to model 3 which analysis is in __Rcode/crossvalModel3.R__.
+The reference model can be runed using the script __Rcode/comparisonModel.R__
+
