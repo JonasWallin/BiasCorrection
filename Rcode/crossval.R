@@ -4,7 +4,7 @@ rm(list=ls())
 # Data location, if one has downloaded data the files needed
 # spesifiy data location below (if NULL will download the files)
 ###
-data_location = '../data/' #NULL
+data_location = NULL#'../data/'
 
 
 require(excursions)
