@@ -95,9 +95,9 @@ ind.sub[[n.cv]] = intersect(tmp[,n.cv],ind)
 
 quant.BCM <- quant.ERA <- quant.Y <- list()
 for(i in 1:n.cv){
-  quant.BCM[[i]] <- apply(BCM[,ind.sub[[i]]],1,quantile,probs=c(q))
-  quant.ERA[[i]] <- apply(ERA[,ind.sub[[i]]],1,quantile,probs=c(q))
-  quant.Y[[i]]   <- apply(Y[,ind.sub[[i]]],1,quantile,probs=c(q))
+  quant.BCM[[i]] <- apply(BCM[,ind.sub[[i]]], 1,quantile,probs=c(q))
+  quant.ERA[[i]] <- apply(ERA[,ind.sub[[i]]], 1,quantile,probs=c(q))
+  quant.Y[[i]]   <- apply(Y[,ind.sub[[i]]]  , 1,quantile,probs=c(q))
 }
 
 

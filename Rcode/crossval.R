@@ -18,12 +18,12 @@ library(INLA)
 
 do.plot = TRUE            #Visualise results?
 use_log = TRUE            #Use model in log scale?
-use_BCM_train  = FALSE    #Train model on BCM? If false, use ERA40
+use_BCM_train  = TRUE    #Train model on BCM? If false, use ERA40
 use_BCM_eval   = TRUE     #Evaluate results on BCM? If false, use ERA40
 n.cv = 8                  #Number of cross validation sets
 q = 0.95                  #The quantile to do prediction for
-smooth.X = TRUE           #Smooth the covariate?
-smooth.beta = TRUE       #Smooth prior for beta?
+smooth.X = FALSE           #Smooth the covariate?
+smooth.beta = FALSE       #Smooth prior for beta?
 smooth.error = FALSE       #Smooth prior for eps?
 season = 1                #Season to work with (1=winter, 2=spring,...)
 alpha = 2                 #Smoothness of random fields
@@ -43,6 +43,20 @@ for(i in 1:n.cv){
 ###########################
 ## Plot data
 ###########################
+
+# for(i in 1:length(quant.ERA))
+# {
+#   file.era = paste("quant90.ERA_",i,'.dat',sep='')
+#   write.table(quant.ERA[[i]][ireo], file =file.era, row.names=F, col.names=F)
+#   
+#   file.bcm = paste("quant90.bcm_",i,'.dat',sep='')
+#   write.table(quant.BCM[[i]][ireo], file = file.bcm, row.names=F, col.names=F)
+#   
+#   file.y = paste("quant90.Y_",i,'.dat',sep='')
+#   write.table(quant.Y[[i]][ireo], file = file.y, row.names=F, col.names=F)
+#   
+# }
+
 
 m = 58
 n = 63

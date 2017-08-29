@@ -18,3 +18,10 @@ data one needs to run the script __Rcode/DownloadData.R__, and then specify the 
 
 The reference model can be runed using the script __Rcode/comparisonModel.R__
 
+##### installing INLA
+The R code requires use of INLA which is not aviable on CRAN, instead follows the instruction from
+[rINLA](http://www.r-inla.org/download). Or in R, just run
+`
+install.packages("INLA", repos="https://inla.r-inla-download.org/R/stable")
+`
+
